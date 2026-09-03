@@ -38,6 +38,7 @@ React Router and MUI.
    | `VITE_AUTHENTIK_REDIRECT_URI` | Must match the redirect URI configured in Authentik |
    | `VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI` | Where Authentik sends the browser after logout |
    | `VITE_AUTHENTIK_SCOPE` | Space-separated OIDC scopes |
+   | `VITE_AUTHENTIK_ENROLLMENT_URL` | Optional. URL of an Authentik Enrollment flow (`/if/flow/<slug>/`); shows a "Sign up" link on the login page when set |
 
 3. Install dependencies and run the dev server:
 

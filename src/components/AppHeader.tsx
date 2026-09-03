@@ -5,6 +5,7 @@ import {
   Box,
   Button,
   Toolbar,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
@@ -33,19 +34,21 @@ export function AppHeader() {
             <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
               {auth.user?.profile?.email}
             </Typography>
-            <Button
-              size="small"
-              variant="outlined"
-              color="inherit"
-              startIcon={<LogoutRoundedIcon />}
-              onClick={() =>
-                auth.signoutRedirect({
-                  post_logout_redirect_uri: postLogoutRedirectUri,
-                })
-              }
-            >
-              登出
-            </Button>
+            <Tooltip title="只登出這個應用程式；Authentik 帳號本身仍保持登入，其他串接同一個 Authentik 的應用不受影響">
+              <Button
+                size="small"
+                variant="outlined"
+                color="inherit"
+                startIcon={<LogoutRoundedIcon />}
+                onClick={() =>
+                  auth.signoutRedirect({
+                    post_logout_redirect_uri: postLogoutRedirectUri,
+                  })
+                }
+              >
+                登出此應用
+              </Button>
+            </Tooltip>
           </Box>
         )}
       </Toolbar>
