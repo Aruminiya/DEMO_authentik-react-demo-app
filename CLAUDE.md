@@ -36,7 +36,22 @@ This is a demo of the OIDC Authorization Code flow against Authentik, built with
 
 **Token display** (`src/pages/DashboardPage.tsx` + `src/components/TokenPanel.tsx` + `src/components/TokenExpiry.tsx`): decodes the ID/access token JWT payloads client-side via `src/utils/jwt.ts` (hand-rolled base64url decode, no `jwt-decode` dependency) purely for display — this is not used for any trust decision. `TokenExpiry` runs a `setInterval` off `auth.user.expires_at` for the live countdown; "refresh token" calls `auth.signinSilent()` directly.
 
-**Authorization demo** (`src/pages/DashboardPage.tsx`): a "群組與權限" card demonstrates that Authentik does more than authenticate — it reads `auth.user.profile.groups` (an array, added via `IdTokenClaims`'s index signature since it isn't a standard OIDC claim) and gates a sample section on membership in `DEMO_GROUP` (`'engineering'`), rendering a success/lock `Alert` either way. This claim does **not** exist by default — it requires an Authentik-side Scope Mapping (Customization → Property Mappings → Scope Mapping, scope name `groups`, expression `return {"groups": [g.name for g in request.user.ak_groups.all()]}`) bound to this Provider's Scopes, plus adding `groups` to `VITE_AUTHENTIK_SCOPE`. Without that setup the card degrades gracefully to an explanatory `Alert` rather than erroring — `groups` is `null` (claim absent) vs `[]` (claim present, empty) vs a populated array, and the UI branches on all three intentionally; preserve that distinction if you touch this component.
+**Authorization demo** (`src/pages/DashboardPage.tsx`): a "群組與權限" card demonstrates that Authentik does more than authenticate — it reads `auth.user.profile.groups` (an array, added via `IdTokenClaims`'s index signature since it isn't a standard OIDC claim) and gates a sample section on membership in `DEMO_GROUP` (`'engineering'`), rendering a success/lock `Alert` either way. This claim does **not** exist by default; without it the card degrades gracefully to an explanatory `Alert` rather than erroring — `groups` is `null` (claim absent) vs `[]` (claim present, empty) vs a populated array, and the UI branches on all three intentionally; preserve that distinction if you touch this component.
+
+To actually populate the claim, set up on the Authentik side (all steps are in the Authentik admin UI, not this repo):
+1. **使用者目錄 → 群組**：create the group (e.g. `engineering`) if it doesn't already exist.
+2. **使用者目錄 → 使用者**：open the test account and add it to that group.
+3. **Customization → Property Mappings**：create a **Scope Mapping** — Scope name `groups`, Expression:
+   ```python
+   return {
+       "groups": [group.name for group in request.user.ak_groups.all()],
+   }
+   ```
+4. **應用程式 → 供應商** → this provider → edit → **Scopes**: add the new `groups` mapping to Selected.
+5. `.env`: add `groups` to `VITE_AUTHENTIK_SCOPE` (e.g. `openid profile email groups`), then restart `npm run dev` (env vars don't hot-reload).
+6. Log in with the account from step 2 — the Dashboard's group chips and the `engineering`-gated demo section should now reflect real data.
+
+The "Parents" and "角色 (Roles)" fields on the group-creation form are unrelated to this feature and can be left empty — Parents is group-hierarchy inheritance (a child group inherits its ancestors' Roles), and Roles grant permissions *inside the Authentik admin UI itself* (e.g. read-only access), not authorization for this app. Don't confuse the two: Groups gate what this app shows a user; Roles gate what a user can do to Authentik's own configuration.
 
 **Styling**: a single MUI theme (`src/theme.ts`) applied via `ThemeProvider` + `CssBaseline` in `main.tsx`. No CSS modules or Tailwind — component styling is done with MUI's `sx` prop throughout. Note MUI v9's `Stack` only exposes `direction`/`spacing`/`divider`/`useFlexGap`/`sx`/`component` as props — `alignItems`/`justifyContent` etc. must go inside `sx`, not passed directly (unlike some older MUI versions/docs examples).
 
