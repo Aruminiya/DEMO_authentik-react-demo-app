@@ -35,6 +35,25 @@ Authentik 的 OAuth2/OIDC Provider，登出行為由一個叫 **Invalidation Flo
 
 前端（不管是這個 demo 專案還是 `bon-portal` 自己）呼叫的都是同一支 `auth.signoutRedirect()`，打到 Authentik 同一個 end-session endpoint，而**該次登出要執行的邏輯，是由那個請求所屬的 Provider 的 Invalidation Flow 決定的**——不是前端按鈕的名字、也不是呼叫時多帶了什麼參數。想要「兩種不同強度的登出」，唯一乾淨的做法就是「兩個不同的 Provider（也就是兩個不同的應用程式），各自指定不同的 Invalidation Flow」，而不是試圖在同一個 Provider 上做出兩種行為。
 
+## 附錄：BonPortal 畫面呈現方式，會不會影響上面這套設計
+
+主管的 BonPortal 設計稿（側邊欄列出 BonSale／BonTalk／BonAI，點下去切換內容）背後，實際上有兩種完全不同的技術做法，**只有其中一種跟本文件的設計相容**：
+
+### 做法一：導覽入口（Launcher）模式——不受影響，直接套用上面的設計
+
+BonPortal 只是一份「你能用哪些產品」的清單，點下去是**整頁導頁**到該產品自己獨立部署的網域（截圖裡產品名稱旁的外部連結圖示 ↗ 暗示的就是這種）。這種模式下，每個產品都還是各自獨立、最上層的分頁在跑 `signinRedirect()`／`signoutRedirect()`，跟本文件從頭到尾討論的架構完全一致，**不用做任何調整**。
+
+### 做法二：iframe 嵌入模式——會直接讓整個構想卡死，技術上跑不起來
+
+如果 BonPortal 這個畫面本身要把各產品的內容**嵌**進來顯示（例如用 iframe 把 BonSale/BonTalk/BonAI 的網頁塞進同一個畫面），會撞到一個無法繞過的硬限制：
+
+- **實測確認**：Authentik 的 Django 設定裡有 `django.middleware.clickjacking.XFrameOptionsMiddleware`，沒有被覆寫，代表用的是預設值 **`X-Frame-Options: DENY`**——Authentik 的任何頁面（登入頁、授權頁）**一律拒絕被放進任何 iframe，不分同網域或跨網域**。這是 Authentik 主動的防點擊劫持（Clickjacking）保護，合理且不該關掉。
+- 後果：**被嵌入的產品只要需要走一次 Authentik 登入（第一次登入、或 session 過期），那個登入畫面在 iframe 裡會直接顯示空白**，使用者卡住進不去，不是變醜、是完全用不了。
+- 就算已登入不用重新驗證，跨網域 iframe 也會撞上瀏覽器的**第三方 cookie 封鎖**（Safari ITP、Chrome 淘汰第三方 cookie、Firefox ETP），被嵌入產品自己的登入狀態可能說斷就斷。
+- 本文件「bon-portal 專屬 Invalidation Flow」那套設計，前提也是「每個產品都是最上層分頁在導頁」——如果變成 iframe 內的子頁面，連「導去 Authentik 登出」這個動作要不要跳出 iframe（`target="_top"`）都要另外處理，複雜度完全是另一個等級，且無法保證能正常運作。
+
+**結論**：這件事應該在設計階段就跟提案的人確認清楚，屬於會決定整個 BonPortal 能不能做出來的關鍵技術限制，越早釐清、後續設計與開發成本影響越小。
+
 ## 參考
 
 - 這個結論是排除掉以下幾條路之後得出的，細節記錄在本專案的 `CLAUDE.md` →「Session, logout & trust boundaries」章節：
