@@ -8,6 +8,7 @@ Authentik 的 OAuth2/OIDC Provider，登出行為由一個叫 **Invalidation Flo
 
 - 同一個 Provider 底下，不可能讓「一般登出」跟「切換使用者／完整登出」用不同強度——不管前端按鈕叫什麼名字，只要都是呼叫 `signoutRedirect()`，走的就是同一個 Invalidation Flow。
 - Authentik 預設的 `default-provider-invalidation-flow`（多個 Provider 若未特別指定，通常共用這個）**只結束該應用自己的授權，不會終止 Authentik 本身的登入狀態**（`authentik_session` 這顆 cookie 不受影響）。這是刻意的業界標準設計，Google／Okta／Auth0 的「登出」預設都是這樣，目的是保留 SSO 的便利性。
+  - 精確度補充：那條 Flow 實際上**綁了 0 個 Stage**、本身什麼事都不做。「結束該應用自己的授權」（刪掉這個 Provider 的 access token）是 `EndSessionView` 這支 view 做的，不是 Flow 做的。推理「換掉 Invalidation Flow 會影響什麼」時這點很重要——換 Flow 不會影響 token 撤銷，只會影響「要不要真的終止 Authentik 的 session」。
 - 若想讓登出變成「連 Authentik 帳號、連其他串接應用都一起登出」（正式名稱叫 **Single Logout, SLO**），做法是在 Invalidation Flow 裡加一個 `UserLogoutStage`。但如果直接加在共用的 `default-provider-invalidation-flow` 上，**會讓所有共用這個 Flow 的產品，登出都變成 Single Logout**，沒辦法只讓某一個產品或某一顆按鈕變得比較「強」。
 
 ## 設計結論：中控台（bon-portal）獨立扮演「完整登出」的角色
@@ -23,13 +24,122 @@ Authentik 的 OAuth2/OIDC Provider，登出行為由一個叫 **Invalidation Flo
 
 ## bon-portal 專屬 Invalidation Flow 的具體建立步驟
 
-**不要**把 `bon-portal` 的 Invalidation Flow 直接設成 Authentik 內建的 `default-invalidation-flow`——那個 Flow 沒有處理 OIDC 的 `client_id`／`post_logout_redirect_uri`，登出完會卡在 Authentik 自己的空白頁面，回不到 `bon-portal`（已實測驗證過）。正確做法是「複製一個空殼 + 自己加登出用的 Stage」：
+> **2026-09-08 更正**：本節原本寫著「**不要**直接用內建的 `default-invalidation-flow`，因為它沒有處理 OIDC 的 `client_id`／`post_logout_redirect_uri`，登出完會卡在空白頁面」。**這個歸因是錯的**：當時實測到的空白頁面是 Authentik 的一個 bug（詳見下面〈已知限制：Authentik 的登出白畫面 bug〉一節），跟選哪條 Flow 無關。`default-invalidation-flow` 是能正確導回 `bon-portal` 的。下面的建立步驟仍然建議照做，但理由不同，見本節末。
 
-1. **流程與階段 → 流程 → 建立**：新建一個 Flow，例如叫 `bon-portal-full-invalidation-flow`，**使用目的（Designation）選「Invalidation」**，其餘設定比照 `default-provider-invalidation-flow`（讓它保留正確處理 OIDC 導回的能力，一開始內容是空的）。
+`post_logout_redirect_uri` 的處理**不在 Flow 裡**，而在 `EndSessionView` 以及它**強制附加**的 `SessionEndStage`：
+
+```python
+# authentik/providers/oauth2/views/end_session.py
+context = { PLAN_CONTEXT_APPLICATION: self.application }
+if self.post_logout_redirect_uri:
+    context[PLAN_CONTEXT_POST_LOGOUT_REDIRECT_URI] = self.post_logout_redirect_uri
+...
+plan.append_stage(in_memory_stage(SessionEndStage))   # ← 不論指定哪條 Flow，都會被接上
+return plan.to_redirect(self.request, self.flow)      # self.flow = provider.invalidation_flow
+```
+
+換句話說，**任何** Invalidation Flow 都會正確處理 OIDC 導回；Flow 的內容只決定「要不要真的終止 session」。DB 逐欄位比對也證實，兩條內建 Flow 除了 Stage 綁定之外完全相同：
+
+| | `default-invalidation-flow` | `default-provider-invalidation-flow` |
+|---|---|---|
+| authentication | none | none |
+| denied_action | message_continue | message_continue |
+| compatibility_mode | false | false |
+| layout | stacked | stacked |
+| policy bindings | 0 | 0 |
+| **stages** | **1（`default-invalidation-logout`）** | **0** |
+
+實測驗證（2026-09-08）：把 `bon-portal` 的 Invalidation Flow 設成 `default-invalidation-flow` 後，end-session 回 **302** → 執行 Flow → 觸發 `{"action": "logout"}` 事件 → 正確導回 `bon-portal`。
+
+所以下面「複製一個空殼 + 自己加登出用的 Stage」的步驟**仍然建議照做**，但理由要換成：
+
+- 不要動到內建 Flow 的語意——它可能被其他 Provider 或 Brand 層級的設定共用，改它會有連帶影響
+- 以後要在完整登出流程裡加東西（稽核事件、清快取、跳一頁「你已登出」提示）時，有自己的地方可以加
+
+建立步驟（「複製一個空殼 + 自己加登出用的 Stage」）：
+
+1. **流程與階段 → 流程 → 建立**：新建一個 Flow，例如叫 `bon-portal-full-invalidation-flow`，**使用目的（Designation）選「Invalidation」**，其餘設定比照 `default-provider-invalidation-flow`（一開始內容是空的；OIDC 導回不需要 Flow 做任何事，見本節開頭）。
 2. **流程與階段 → 階段 → 建立**（或直接沿用 Authentik 內建的 `default-invalidation-logout`）：型別選 **User Logout Stage**。這個 Stage 才是真正會呼叫終止 session 動作的元件。
 3. 回到剛剛新建的 `bon-portal-full-invalidation-flow` → 階段附加 → 把這個 User Logout Stage 綁進去（Order 設 0 或最前面）。
 4. **應用程式 → 供應商 → `bon-portal` 對應的 Provider → 編輯 → Invalidation Flow**：改選成剛剛建立的 `bon-portal-full-invalidation-flow`（**不要**動到其他產品的 Provider，它們繼續用原本共用的 `default-provider-invalidation-flow`）。
 5. 用無痕視窗實測：在 `bon-portal` 登出後，確認 (a) 有正確導回 `bon-portal` 自己的登入頁，(b) `authentik_session` 這顆 cookie 真的被清掉、下次任何產品登入都要重新輸入密碼。
+
+## 已知限制：Authentik 的登出白畫面 bug（跨產品，每個 RP 都要繞道）
+
+> 這一節是 2026-09-08 追查出來的，適用 authentik **2026.8.0**。它會影響本文件表格裡的**每一個**產品，不只 `bon-portal`。
+
+**症狀**：按下登出後停在 Authentik 網域的一片空白頁，URL 還停在 `/application/o/<slug>/end-session/?...`，而且**根本沒有登出**。
+
+### 成因
+
+`EndSessionView.dispatch` 最前面有一個早退：
+
+```python
+# authentik/providers/oauth2/views/end_session.py
+def dispatch(self, request, *args, **kwargs):
+    """Return early when a flow plan is already executing in this session. ..."""
+    if SESSION_KEY_PLAN in request.session:   # SESSION_KEY_PLAN = "authentik/flows/plan"
+        return HttpResponse(status=200)        # ← body 全空的 200，就是那片白畫面
+    return super().dispatch(request, *args, **kwargs)
+```
+
+這個早退原本只是要處理 front-channel logout 的 iframe 請求，但它**只看 session 裡有沒有殘留的 flow plan，不判斷請求是不是來自 iframe**，所以正常的整頁導覽也會被誤傷。
+
+判斷方法：這個端點成功是 **302**、參數錯是 **400**、沒權限是可見的 Access denied 頁——**只有這條路徑會回 body 全空的 200**。看到白畫面就是這個。
+
+而殘留幾乎是必然發生的：
+
+1. Invalidation Flow 最後的 `SessionEndStage` 是用 **redirect challenge** 收尾——瀏覽器直接跳走，不會把結果回報給 flow executor
+2. 於是負責清掉 plan 的 `FlowExecutorView.cancel()` 永遠不會被呼叫
+3. 就算 Flow 裡有 `UserLogoutStage`（`logout()` → Django `session.flush()`）也沒用：executor 隨後又會把新的 plan 寫進那個剛建立的**匿名** session（`executor.py` 裡的 `self.request.session[SESSION_KEY_PLAN] = self.plan`）
+4. 之後重新登入時 Django 的 `cycle_key()` 會保留 session 內容，把殘留一路帶進新 session
+
+也就是「**任何一次登出（任何一個產品都算）都會埋下地雷，下一次登出就白畫面**」。
+
+### 實測 log（2026-09-08）
+
+| 時間 | 請求 | 結果 |
+|---|---|---|
+| 08:52:58 | `bon-portal-app/end-session`（已加繞道） | **302** ✅ 登出成功 |
+| 08:52:59 | `executor/default-invalidation-flow` | 200，`auth_via=unauthenticated`（確實已登出） |
+| 08:53:00 | `authentik-react-demo-app/end-session`（未加繞道） | **200 空白** ← 被上一步的殘留打到 |
+
+更荒謬的是第 3 列時使用者**早已登出**。authentik 自己在 `handle_no_permission` 的註解寫著 *"RP-Initiated Logout is idempotent: an unauthenticated request is a valid no-op"*，本該跑 Invalidation Flow 顯示「已登出」頁；但 guard 位在權限檢查**之前**，連 no-op 都做不到。
+
+### 繞道：導向 end-session 前先繞一次 CancelView
+
+Authentik 的 `CancelView`（`/flows/-/cancel/`）就是專門刪 `SESSION_KEY_PLAN` 的，刪完會導向 `next`（只吃相對路徑，而 end-session 剛好在同一個 host 上）：
+
+```ts
+const endSession = new URL(END_SESSION_ENDPOINT);
+endSession.search = params.toString();   // client_id / id_token_hint / post_logout_redirect_uri
+
+// 先繞去 CancelView 清掉殘留的 flow plan，再讓它導向真正的 end-session
+const logoutUrl = new URL("/flows/-/cancel/", endSession);
+logoutUrl.searchParams.set("next", `${endSession.pathname}${endSession.search}`);
+window.location.href = logoutUrl.toString();
+```
+
+實測：帶真實長度的 `id_token`（2558 字元，整條 URL 2794 字元）第一跳回 302，`id_token_hint` 與 `post_logout_redirect_uri` 都完整無損。
+
+**注意**：這個繞道會取消該 session 裡任何進行中的 flow（例如另一個分頁正卡在登入中）。對「登出」這個動作來說語意合理，但要知道有這件事。
+
+**要寫進跨產品實作規範**：每個接 Authentik 的產品，登出都要走這個繞道，不是只有 `bon-portal`。上游修好之後這段可以拿掉——正確的修法應該是讓 guard 判斷請求是否來自 iframe（例如看 `Sec-Fetch-Dest: iframe`），而不是看 session 有沒有 plan。
+
+## 已知限制：post_logout_redirect_uri 是字串完全比對
+
+另一個會回「Bad Request / The request is otherwise malformed」的坑，跟上面的白畫面是不同問題：
+
+Authentik 2026.8 的 Provider Redirect URIs 清單，每一筆都有 **type**（`authorization` 或 `logout`）。`post_logout_redirect_uri` 只會跟 type=`logout` 那幾筆比對，而 matching mode 是 `strict` 時是**字串完全比對**——**連結尾斜線都算不同**：
+
+```
+{ "url": "http://localhost:6174/auth/authentik/callback", "matching_mode": "strict", "redirect_uri_type": "authorization" }
+{ "url": "http://localhost:6174",                         "matching_mode": "strict", "redirect_uri_type": "logout" }
+```
+
+送 `http://localhost:6174/`（結尾多一個斜線）就會被擋成 `invalid_request`，錯誤頁只寫「The request is otherwise malformed」，完全不會告訴你是哪個參數、差在哪裡。前端與 Authentik 兩邊必須一模一樣，改 port 或改網域時這是最容易漏的一項。
+
+另外，`id_token_hint` 是帶 `post_logout_redirect_uri` 的**必要**參數（OIDC 規範要求，否則任何人光憑公開的 client_id 就能亂指定登出後的導向網址）。這代表前端必須留著 `id_token` 才能在登出時自動導回。
 
 ## 為什麼不能「只加在某個按鈕上」
 
@@ -62,3 +172,8 @@ BonPortal 只是一份「你能用哪些產品」的清單，點下去是**整�
   - [goauthentik/authentik#20845](https://github.com/goauthentik/authentik/issues/20845)：Authentik 官方自己也承認，目前沒有乾淨的方式讓第三方應用程式強制要求重新驗證
 - [Authentik 官方文件：Single Logout (SLO)](https://docs.goauthentik.io/add-secure-apps/providers/single-logout/)
 - [Authentik 官方文件：User logout stage](https://docs.goauthentik.io/add-secure-apps/flows-stages/stages/user_logout/)
+- 上面兩節〈已知限制〉的結論來自直接讀 authentik 2026.8.0 容器內的原始碼，要重新驗證時可以從這幾個檔案開始：
+  - `authentik/providers/oauth2/views/end_session.py` — `EndSessionView`（白畫面的 guard、`post_logout_redirect_uri` 的完全比對、`id_token_hint` 驗證時刻意關掉 exp 檢查都在這裡）
+  - `authentik/flows/views/executor.py` — `SESSION_KEY_PLAN`、`FlowExecutorView.cancel()`、`CancelView`
+  - `authentik/flows/stage.py` — `SessionEndStage`（用 redirect challenge 收尾，因此 plan 不會被清掉）
+  - `authentik/providers/oauth2/models.py` — `redirect_uris` / `authorization_redirect_uris` / `post_logout_redirect_uris` 三個 property 的關係
