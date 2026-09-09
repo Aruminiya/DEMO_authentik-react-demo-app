@@ -141,6 +141,44 @@ Authentik 2026.8 的 Provider Redirect URIs 清單，每一筆都有 **type**（
 
 另外，`id_token_hint` 是帶 `post_logout_redirect_uri` 的**必要**參數（OIDC 規範要求，否則任何人光憑公開的 client_id 就能亂指定登出後的導向網址）。這代表前端必須留著 `id_token` 才能在登出時自動導回。
 
+## 已知限制：issuer 一致性——同一台 Authentik，用不同網址連會拿到不同 issuer
+
+> 這一節跟登出無關，是**設計多產品共用 Authentik 時，比登出更早、更根本要先釘死的一件事**。BonAI 那邊在 PR 回饋裡（`bonvies/BonPortal#11`，Decision K）已經獨立實測到同一個結論，這裡記錄一次完整的原理跟解法。
+
+### 現象
+
+Authentik 本機開發環境（見 `docker-compose.yml`）預設同時開兩個 port：
+
+```yaml
+ports:
+- 9000:9000   # 一般 HTTP
+- 9443:9443   # HTTPS（Authentik 自己簽發的憑證，瀏覽器不會信任）
+```
+
+同一個 Application，用 `http://host:9000/...` 去打 OIDC discovery（`/.well-known/openid-configuration`）拿到的 `issuer`，跟用 `https://host:9443/...` 打拿到的 `issuer`，**是兩個不同的字串**——即使背後是同一台伺服器、同一個 Application、同一把簽章金鑰。
+
+### 為什麼這會出問題
+
+**不是簽章壞掉，`iss` 這個欄位的內容會因為你連線用的網址不同而不同，但 Token 本身仍然是合法、簽章正確的。** OIDC 客戶端函式庫（例如本專案用的 `oidc-client-ts`）在驗證 ID Token 時，會拿 Token 裡的 `iss` 去跟自己設定的 `authority` 做字串比對，對不上就直接判定 Token 無效——這件事在「單一產品自己跟自己講話」的情境下不會發生（一個產品只會設定一個固定的 `authority`，自己發、自己收，永遠一致）。
+
+**真正會踩到的情境，是「有第三方需要驗證『不是發給自己』的 Token」**，例如：
+
+- 多個產品共用同一個後端 API／Gateway，這個後端要驗證各產品送來的 access token 時，若各產品的前端各自設定了不同的 `authority`（有的用 `:9000`、有的用 `:9443`，或正式環境有的用內部網域、有的用外部網域），後端如果只信任其中一種 issuer 字串，會把另一批完全合法的 Token 誤判為無效
+- 服務間互相代理驗證（例如 PR #11 提到還在調查中的 Actor/Agent OBO 機制）——任何「拿著 A 系統的 Token，讓 B 系統去驗證」的設計，都建立在雙方對 issuer 有共識的前提上
+
+### 解法：正式環境只留一個對外入口，不要讓多重 port／網域並存
+
+`:9000`／`:9443` 並存是本機開發階段的過渡狀態，**不該帶進正式環境**。正確做法：
+
+1. 在 Authentik 前面架一個反向代理（Nginx / Traefik / Caddy），由它統一處理 TLS（用真正受信任的憑證，例如 Let's Encrypt），對外只曝露**一個**固定網址（例如 `https://sso.company.com`，標準 443 port）
+2. Authentik 自己的 port（無論是 9000 還是 9443）**不對外開放**，只有反向代理連得到
+3. Authentik 設定成不論內部實際怎麼連進來，一律回報同一個固定 `issuer`（透過 `AUTHENTIK_HOST` 之類的環境變數，或讓它信任反向代理轉發的 `X-Forwarded-Host`/`X-Forwarded-Proto`）
+4. **全公司每個產品的 OIDC 設定（`authority` / `VITE_AUTHENTIK_AUTHORITY` 這類欄位），一律指向這唯一一個網址，不允許各團隊各自選** —— 這件事要在任何跨產品互信機制動工前先拍板，順序不能反
+
+這是「從基礎設施層面收斂成一個入口」，比「在每個驗證端各自加邏輯去容忍不同 issuer」乾淨、可靠得多——後者只該當作真的沒辦法統一時的補救手段，不是首選。
+
+本專案（`authentik-react-demo-app`）目前 `.env` 從頭到尾只用 `http://localhost:9000/...` 這一種，沒有踩到這個問題，純粹是因為從來沒有第二個入口被用過——不代表這個坑不存在，只是我們自己還沒踩到。
+
 ## 為什麼不能「只加在某個按鈕上」
 
 前端（不管是這個 demo 專案還是 `bon-portal` 自己）呼叫的都是同一支 `auth.signoutRedirect()`，打到 Authentik 同一個 end-session endpoint，而**該次登出要執行的邏輯，是由那個請求所屬的 Provider 的 Invalidation Flow 決定的**——不是前端按鈕的名字、也不是呼叫時多帶了什麼參數。想要「兩種不同強度的登出」，唯一乾淨的做法就是「兩個不同的 Provider（也就是兩個不同的應用程式），各自指定不同的 Invalidation Flow」，而不是試圖在同一個 Provider 上做出兩種行為。
