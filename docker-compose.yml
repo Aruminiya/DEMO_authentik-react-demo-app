@@ -1,0 +1,41 @@
+# 多產品 SSO demo 用：每個 service 都是用同一份 Dockerfile/同一套程式碼，
+# 只是各自帶著不同的 build args（不同 client_id、不同 port），拿來模擬
+# 「多個各自獨立的產品，共用同一個 Authentik」——就是 docs/bon-portal-sso-logout-design.md
+# 裡討論的架構，複製一份 service 改個名字、改個 port，就能再多開一個「假產品」。
+#
+# 開始之前，每個 service 都要先在 Authentik 後台建好對應的 Application/Provider，
+# 拿到各自的 client_id，並且把下面對應的 REDIRECT_URI 一字不差地登記進
+# Authentik 那個 Provider 的 Redirect URIs 清單（Strict 比對、連結尾斜線都算，
+# 細節見 CLAUDE.md「Environment setup」）。
+#
+# 因為 VITE_AUTHENTIK_* 是建置時就烤進 JS 裡的（不是容器啟動時讀取），
+# 改下面任何一個 build.args 的值之後，要重新 build 才會生效：
+#   docker compose build bonsale-demo && docker compose up -d bonsale-demo
+
+services:
+  bonsale-demo:
+    build:
+      context: .
+      args:
+        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/<換成-bonsale-的-provider-slug>/
+        VITE_AUTHENTIK_CLIENT_ID: <換成-bonsale-在-Authentik-裡的-client_id>
+        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:5175/login
+        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:5175/login
+    ports:
+      - "5175:80"
+    restart: unless-stopped
+
+  bontalk-demo:
+    build:
+      context: .
+      args:
+        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/<換成-bontalk-的-provider-slug>/
+        VITE_AUTHENTIK_CLIENT_ID: <換成-bontalk-在-Authentik-裡的-client_id>
+        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:5176/login
+        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:5176/login
+    ports:
+      - "5176:80"
+    restart: unless-stopped
+
+  # 要再多開一個「假產品」，複製上面一整塊、改 service 名稱、改 port
+  # （5177、5178...）、改 client_id，就是新的一個獨立產品。
