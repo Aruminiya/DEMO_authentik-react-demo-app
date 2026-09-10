@@ -4,10 +4,13 @@ import {
   Avatar,
   Box,
   Button,
+  Chip,
+  Stack,
   Toolbar,
   Tooltip,
   Typography,
 } from '@mui/material'
+import HubRoundedIcon from '@mui/icons-material/HubRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 
 import { postLogoutRedirectUri } from '../config/oidc'
@@ -16,17 +19,38 @@ import { signoutWithCancelBounce } from '../utils/authentikLogout'
 export function AppHeader() {
   const auth = useAuth()
 
+  const isPortal = import.meta.env.VITE_DEMO_APP_TYPE === 'portal'
   const appName = import.meta.env.VITE_DEMO_APP_NAME || 'React + Authentik OIDC Demo'
   const initials = (auth.user?.profile?.email || auth.user?.profile?.preferred_username || '?')
     .charAt(0)
     .toUpperCase()
 
   return (
-    <AppBar position="static" color="inherit" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+    <AppBar
+      position="static"
+      color="inherit"
+      elevation={0}
+      sx={{
+        borderBottom: '1px solid',
+        borderColor: isPortal ? 'primary.main' : 'divider',
+      }}
+    >
       <Toolbar sx={{ gap: 2 }}>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
-          {appName}
-        </Typography>
+        <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', flexGrow: 1 }}>
+          {isPortal && <HubRoundedIcon color="primary" />}
+          <Typography variant="h6" component="div" sx={{ fontWeight: 700 }}>
+            {appName}
+          </Typography>
+          {isPortal && (
+            <Chip
+              label="Portal"
+              size="small"
+              color="primary"
+              variant="outlined"
+              sx={{ fontWeight: 600, display: { xs: 'none', sm: 'inline-flex' } }}
+            />
+          )}
+        </Stack>
 
         {auth.isAuthenticated && (
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>

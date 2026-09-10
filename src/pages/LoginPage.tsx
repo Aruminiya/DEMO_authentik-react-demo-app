@@ -13,6 +13,7 @@ import {
   Typography,
 } from '@mui/material'
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
+import HubRoundedIcon from '@mui/icons-material/HubRounded'
 
 type LocationState = {
   from?: { pathname: string }
@@ -33,6 +34,7 @@ export default function LoginPage() {
   const enrollmentHref = enrollmentUrl
     ? `${enrollmentUrl}${enrollmentUrl.includes('?') ? '&' : '?'}next=${encodeURIComponent(`${window.location.origin}/login`)}`
     : undefined
+  const isPortal = import.meta.env.VITE_DEMO_APP_TYPE === 'portal'
   const title = import.meta.env.VITE_DEMO_APP_NAME || 'React + Authentik OIDC Demo'
   return (
     <Box
@@ -50,12 +52,18 @@ export default function LoginPage() {
           <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
             <Stack spacing={3}>
               <Stack spacing={1.5} sx={{ alignItems: 'center', textAlign: 'center' }}>
-                <ShieldRoundedIcon color="primary" sx={{ fontSize: 48 }} />
+                {isPortal ? (
+                  <HubRoundedIcon color="primary" sx={{ fontSize: 48 }} />
+                ) : (
+                  <ShieldRoundedIcon color="primary" sx={{ fontSize: 48 }} />
+                )}
                 <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
                   {title}
                 </Typography>
                 <Typography color="text.secondary" variant="body2">
-                  使用你的 Authentik 帳號登入，體驗完整的 OIDC 登入流程。
+                  {isPortal
+                    ? '統一入口——登入一次，即可使用所有串接同一個 Authentik 的產品。'
+                    : '使用你的 Authentik 帳號登入，體驗完整的 OIDC 登入流程。'}
                 </Typography>
               </Stack>
 
