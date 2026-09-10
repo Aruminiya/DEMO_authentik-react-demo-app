@@ -27,6 +27,7 @@ import RocketLaunchRoundedIcon from '@mui/icons-material/RocketLaunchRounded'
 import { AppHeader } from '../components/AppHeader'
 import { TokenExpiry } from '../components/TokenExpiry'
 import { ScopeChips, TokenPanel } from '../components/TokenPanel'
+import { getEnv } from '../config/runtimeEnv'
 import { getPortalProducts } from '../utils/portalProducts'
 
 const DEMO_GROUP = 'authentik-react-demo-member'
@@ -58,7 +59,7 @@ export default function DashboardPage() {
     : null
   const isInDemoGroup = groups?.includes(DEMO_GROUP) ?? false
 
-  const isPortal = import.meta.env.VITE_DEMO_APP_TYPE === 'portal'
+  const isPortal = getEnv('VITE_DEMO_APP_TYPE') === 'portal'
   const portalProducts = isPortal ? getPortalProducts() : []
 
   const profileSection = (

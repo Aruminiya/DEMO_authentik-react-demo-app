@@ -8,6 +8,14 @@
   </head>
   <body>
     <div id="root"></div>
+    <!--
+      執行時期設定：本機開發/純 build 時只是個空物件（見 public/env-config.js），
+      不影響 .env 那一套；跑在 Docker 容器裡時，這個檔案會在容器啟動當下被
+      docker-entrypoint.d/40-generate-env-config.sh 蓋掉，塞進當下容器實際的
+      VITE_* 環境變數（見 src/config/runtimeEnv.ts）。一定要放在 main.tsx 之前，
+      而且不能是 type="module"（會變成非同步、失去載入順序保證）。
+    -->
+    <script src="/env-config.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -14,13 +14,14 @@ import HubRoundedIcon from '@mui/icons-material/HubRounded'
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 
 import { postLogoutRedirectUri } from '../config/oidc'
+import { getEnv } from '../config/runtimeEnv'
 import { signoutWithCancelBounce } from '../utils/authentikLogout'
 
 export function AppHeader() {
   const auth = useAuth()
 
-  const isPortal = import.meta.env.VITE_DEMO_APP_TYPE === 'portal'
-  const appName = import.meta.env.VITE_DEMO_APP_NAME || 'React + Authentik OIDC Demo'
+  const isPortal = getEnv('VITE_DEMO_APP_TYPE') === 'portal'
+  const appName = getEnv('VITE_DEMO_APP_NAME') || 'React + Authentik OIDC Demo'
   const initials = (auth.user?.profile?.email || auth.user?.profile?.preferred_username || '?')
     .charAt(0)
     .toUpperCase()

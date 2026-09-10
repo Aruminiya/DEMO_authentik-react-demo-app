@@ -15,6 +15,8 @@ import {
 import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded'
 import HubRoundedIcon from '@mui/icons-material/HubRounded'
 
+import { getEnv } from '../config/runtimeEnv'
+
 type LocationState = {
   from?: { pathname: string }
 }
@@ -30,12 +32,12 @@ export default function LoginPage() {
     return <Navigate to={from} replace />
   }
 
-  const enrollmentUrl = import.meta.env.VITE_AUTHENTIK_ENROLLMENT_URL
+  const enrollmentUrl = getEnv('VITE_AUTHENTIK_ENROLLMENT_URL')
   const enrollmentHref = enrollmentUrl
     ? `${enrollmentUrl}${enrollmentUrl.includes('?') ? '&' : '?'}next=${encodeURIComponent(`${window.location.origin}/login`)}`
     : undefined
-  const isPortal = import.meta.env.VITE_DEMO_APP_TYPE === 'portal'
-  const title = import.meta.env.VITE_DEMO_APP_NAME || 'React + Authentik OIDC Demo'
+  const isPortal = getEnv('VITE_DEMO_APP_TYPE') === 'portal'
+  const title = getEnv('VITE_DEMO_APP_NAME') || 'React + Authentik OIDC Demo'
   return (
     <Box
       sx={{

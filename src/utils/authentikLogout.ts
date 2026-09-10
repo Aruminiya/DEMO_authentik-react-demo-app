@@ -1,3 +1,5 @@
+import { getEnv } from '../config/runtimeEnv'
+
 // 繞過 Authentik 一個真實存在的 bug（在 2026.8.0 版確認過，完整追查過程見
 // docs/bon-portal-sso-logout-design.md）：只要瀏覽器在 Authentik 網域的 session
 // 裡還殘留著一個舊的 flow plan，EndSessionView.dispatch() 就會直接回傳一個空白
@@ -10,13 +12,13 @@ export async function signoutWithCancelBounce(
   idTokenHint: string | undefined,
   postLogoutRedirectUri: string,
 ): Promise<void> {
-  const authority = import.meta.env.VITE_AUTHENTIK_AUTHORITY
+  const authority = getEnv('VITE_AUTHENTIK_AUTHORITY') ?? ''
   const discoveryRes = await fetch(`${authority}.well-known/openid-configuration`)
   const discovery: { end_session_endpoint: string } = await discoveryRes.json()
 
   const endSession = new URL(discovery.end_session_endpoint)
   const params = new URLSearchParams({
-    client_id: import.meta.env.VITE_AUTHENTIK_CLIENT_ID,
+    client_id: getEnv('VITE_AUTHENTIK_CLIENT_ID') ?? '',
     post_logout_redirect_uri: postLogoutRedirectUri,
   })
   if (idTokenHint) params.set('id_token_hint', idTokenHint)

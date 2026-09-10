@@ -1,5 +1,7 @@
 import { createTheme } from '@mui/material/styles'
 
+import { getEnv } from './config/runtimeEnv'
+
 const THEME_COLORS: Record<string, string> = {
   default: '#fd4b2d',
   blue: '#1976d2',
@@ -12,7 +14,7 @@ const THEME_COLORS: Record<string, string> = {
   indigo: '#303f9f',
 }
 
-const themeColor = import.meta.env.VITE_THEME_COLOR ?? 'default'
+const themeColor = getEnv('VITE_THEME_COLOR') ?? 'default'
 const primaryColor = THEME_COLORS[themeColor] ?? THEME_COLORS.default
 
 export const theme = createTheme({

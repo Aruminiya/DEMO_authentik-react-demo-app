@@ -1,3 +1,5 @@
+import { getEnv } from '../config/runtimeEnv'
+
 export interface PortalProduct {
   name: string
   url: string
@@ -8,7 +10,7 @@ export interface PortalProduct {
 // "localhost:5175"). Each entry is validated independently, so one malformed
 // URL is dropped rather than invalidating the whole list.
 export function getPortalProducts(): PortalProduct[] {
-  const raw = import.meta.env.VITE_PORTAL_PRODUCTS
+  const raw = getEnv('VITE_PORTAL_PRODUCTS')
   if (!raw) return []
   return raw
     .split(',')

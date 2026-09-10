@@ -1,82 +1,84 @@
-# 多產品 SSO demo 用：每個 service 都是用同一份 Dockerfile/同一套程式碼，
-# 只是各自帶著不同的 build args（不同 client_id、不同 port），拿來模擬
-# 「多個各自獨立的產品，共用同一個 Authentik」——就是 docs/bon-portal-sso-logout-design.md
-# 裡討論的架構，複製一份 service 改個名字、改個 port，就能再多開一個「假產品」。
+# 多產品 SSO demo 用：四個 service 現在共用「同一個」image——VITE_* 不再是
+# build-time 烤進 JS 的東西，而是容器啟動當下由
+# docker-entrypoint.d/40-generate-env-config.sh 讀取 environment: 寫出來的
+# env-config.js（見 src/config/runtimeEnv.ts）。這代表：
+#   1. 只有第一個 service 需要 build，其他三個直接複用同一個 image tag。
+#   2. 改任何一個 service 的 environment: 之後，不用重新 build，
+#      docker compose up -d 重開容器就生效。
 #
-# bon-portal-demo 這個 service 把 VITE_DEMO_APP_TYPE 設成 portal，示範文件附錄裡
-# 確認可行的「導覽入口／Launcher」模式：登入後多一張「其他產品」卡片，點下去整頁
-# 導去 bonsale-demo／bontalk-demo，不是 iframe 嵌入（那個已經被排除，見同一份文件）。
+# authentik-react-demo-app-portal 把 VITE_DEMO_APP_TYPE 設成 portal，示範
+# docs/bon-portal-sso-logout-design.md 附錄確認可行的「導覽入口／Launcher」模式：
+# 登入後多一張「其他產品」卡片，點下去整頁導去 product-01／02／03，不是 iframe
+# 嵌入（那個已經被排除，見同一份文件）。
 #
 # 開始之前，每個 service 都要先在 Authentik 後台建好對應的 Application/Provider，
 # 拿到各自的 client_id，並且把下面對應的 REDIRECT_URI 一字不差地登記進
 # Authentik 那個 Provider 的 Redirect URIs 清單（Strict 比對、連結尾斜線都算，
 # 細節見 CLAUDE.md「Environment setup」）。
-#
-# 因為 VITE_AUTHENTIK_* 是建置時就烤進 JS 裡的（不是容器啟動時讀取），
-# 改下面任何一個 build.args 的值之後，要重新 build 才會生效：
-#   docker compose build bonsale-demo && docker compose up -d bonsale-demo
 
 services:
   authentik-react-demo-app-portal:
     build:
       context: .
-      args:
-        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-portal/
-        VITE_AUTHENTIK_CLIENT_ID: n4ZvohRqIxeoESz5xMTI8ze1E29xR6nIb6KxkNNQ
-        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6174/login
-        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/login
-        VITE_DEMO_APP_NAME: authentik-react-demo-app-portal
-        VITE_THEME_COLOR: default
-        VITE_DEMO_APP_TYPE: portal
-        VITE_PORTAL_PRODUCTS: 'http://localhost:6175/dashboard,http://localhost:6176/dashboard,http://localhost:6177/dashboard'
+    image: authentik-react-demo-app:local
+    environment:
+      VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-portal/
+      VITE_AUTHENTIK_CLIENT_ID: n4ZvohRqIxeoESz5xMTI8ze1E29xR6nIb6KxkNNQ
+      VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6174/login
+      VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/login
+      VITE_DEMO_APP_NAME: authentik-react-demo-app-portal
+      VITE_THEME_COLOR: default
+      VITE_DEMO_APP_TYPE: portal
+      VITE_PORTAL_PRODUCTS: 'http://localhost:6175/dashboard,http://localhost:6176/dashboard,http://localhost:6177/dashboard'
     ports:
       - "6174:80"
     restart: unless-stopped
+
   authentik-react-demo-app-product-01:
-    build:
-      context: .
-      args:
-        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-01/
-        VITE_AUTHENTIK_CLIENT_ID: J8v4Dycz7ncYZozxQ2z5lYLI6q3znJ9Kq48Rl27E
-        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6175/dashboard
-        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
-        VITE_DEMO_APP_NAME: authentik-react-demo-app-product-01
-        VITE_THEME_COLOR: blue
-        VITE_DEMO_APP_TYPE: product
+    image: authentik-react-demo-app:local
+    environment:
+      VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-01/
+      VITE_AUTHENTIK_CLIENT_ID: J8v4Dycz7ncYZozxQ2z5lYLI6q3znJ9Kq48Rl27E
+      VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6175/dashboard
+      VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
+      VITE_DEMO_APP_NAME: authentik-react-demo-app-product-01
+      VITE_THEME_COLOR: blue
+      VITE_DEMO_APP_TYPE: product
     ports:
       - "6175:80"
     restart: unless-stopped
 
   authentik-react-demo-app-product-02:
-    build:
-      context: .
-      args:
-        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-02/
-        VITE_AUTHENTIK_CLIENT_ID: tQOKQvkrVL7yIQUptnklElrcanhzqSnwWVypxviF
-        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6176/dashboard
-        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
-        VITE_DEMO_APP_NAME: authentik-react-demo-app-product-02
-        VITE_THEME_COLOR: green
-        VITE_DEMO_APP_TYPE: product
+    image: authentik-react-demo-app:local
+    environment:
+      VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-02/
+      VITE_AUTHENTIK_CLIENT_ID: tQOKQvkrVL7yIQUptnklElrcanhzqSnwWVypxviF
+      VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6176/dashboard
+      VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
+      VITE_DEMO_APP_NAME: authentik-react-demo-app-product-02
+      VITE_THEME_COLOR: green
+      VITE_DEMO_APP_TYPE: product
     ports:
       - "6176:80"
     restart: unless-stopped
 
   authentik-react-demo-app-product-03:
-    build:
-      context: .
-      args:
-        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-03/
-        VITE_AUTHENTIK_CLIENT_ID: aqB8xcgT5HqI4usQC3sFQS13eXfdqlUD2wRH0roK
-        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6177/dashboard
-        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
-        VITE_DEMO_APP_NAME: authentik-react-demo-app-product-03
-        VITE_THEME_COLOR: yellow
-        VITE_DEMO_APP_TYPE: product
+    image: authentik-react-demo-app:local
+    environment:
+      VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-03/
+      VITE_AUTHENTIK_CLIENT_ID: aqB8xcgT5HqI4usQC3sFQS13eXfdqlUD2wRH0roK
+      VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6177/dashboard
+      VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
+      VITE_DEMO_APP_NAME: authentik-react-demo-app-product-03
+      VITE_THEME_COLOR: yellow
+      VITE_DEMO_APP_TYPE: product
     ports:
       - "6177:80"
     restart: unless-stopped
 
-  # 要再多開一個「假產品」，複製 bonsale-demo/bontalk-demo 那樣一整塊、改 service
-  # 名稱、改 port（5178、5179...）、改 client_id，就是新的一個獨立產品。要讓
-  # bon-portal-demo 也能導去它，記得把它加進上面 VITE_PORTAL_PRODUCTS 那個 JSON 陣列。
+  # 要再多開一個「假產品」，複製上面任一個 product 區塊、改 service 名稱、改 port
+  # （5178、5179...）、改 client_id，就是新的一個獨立產品——不用再 build，因為
+  # image: authentik-react-demo-app:local 已經是通用的了。要讓
+  # authentik-react-demo-app-portal 也能導去它，記得把它加進上面
+  # VITE_PORTAL_PRODUCTS 那個逗號分隔清單裡（改完只要重開 portal 容器，
+  # 不用重新 build）。
