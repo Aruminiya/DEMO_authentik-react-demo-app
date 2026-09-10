@@ -28,7 +28,7 @@ services:
         VITE_DEMO_APP_NAME: authentik-react-demo-app-portal
         VITE_THEME_COLOR: default
         VITE_DEMO_APP_TYPE: portal
-        VITE_PORTAL_PRODUCTS: 'http://localhost:6175,http://localhost:6176,http://localhost:6177'
+        VITE_PORTAL_PRODUCTS: 'http://localhost:6175/dashboard,http://localhost:6176/dashboard,http://localhost:6177/dashboard'
     ports:
       - "6174:80"
     restart: unless-stopped
@@ -38,7 +38,7 @@ services:
       args:
         VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-01/
         VITE_AUTHENTIK_CLIENT_ID: J8v4Dycz7ncYZozxQ2z5lYLI6q3znJ9Kq48Rl27E
-        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6175/login
+        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6175/dashboard
         VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
         VITE_DEMO_APP_NAME: authentik-react-demo-app-product-01
         VITE_THEME_COLOR: blue
@@ -53,7 +53,7 @@ services:
       args:
         VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-02/
         VITE_AUTHENTIK_CLIENT_ID: tQOKQvkrVL7yIQUptnklElrcanhzqSnwWVypxviF
-        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6176/login
+        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6176/dashboard
         VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
         VITE_DEMO_APP_NAME: authentik-react-demo-app-product-02
         VITE_THEME_COLOR: green
@@ -68,7 +68,7 @@ services:
       args:
         VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-03/
         VITE_AUTHENTIK_CLIENT_ID: aqB8xcgT5HqI4usQC3sFQS13eXfdqlUD2wRH0roK
-        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6177/login
+        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6177/dashboard
         VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
         VITE_DEMO_APP_NAME: authentik-react-demo-app-product-03
         VITE_THEME_COLOR: yellow
