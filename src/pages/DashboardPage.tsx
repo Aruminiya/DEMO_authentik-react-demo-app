@@ -9,16 +9,19 @@ import {
   Chip,
   Container,
   Divider,
+  Link,
   Stack,
   Typography,
 } from '@mui/material'
 import RefreshRoundedIcon from '@mui/icons-material/RefreshRounded'
 import LockRoundedIcon from '@mui/icons-material/LockRounded'
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded'
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded'
 
 import { AppHeader } from '../components/AppHeader'
 import { TokenExpiry } from '../components/TokenExpiry'
 import { ScopeChips, TokenPanel } from '../components/TokenPanel'
+import { getPortalProducts } from '../utils/portalProducts'
 
 const DEMO_GROUP = 'engineering'
 
@@ -30,6 +33,9 @@ export default function DashboardPage() {
     ? groupsClaim.filter((g): g is string => typeof g === 'string')
     : null
   const isInDemoGroup = groups?.includes(DEMO_GROUP) ?? false
+
+  const isPortal = import.meta.env.VITE_DEMO_APP_TYPE === 'portal'
+  const portalProducts = isPortal ? getPortalProducts() : []
 
   return (
     <Box sx={{ minHeight: '100dvh', bgcolor: 'background.default' }}>
@@ -73,6 +79,51 @@ export default function DashboardPage() {
               </Stack>
             </CardContent>
           </Card>
+
+          {isPortal && (
+            <Card>
+              <CardContent sx={{ p: { xs: 3, sm: 4 } }}>
+                <Typography variant="h6" sx={{ fontWeight: 600, mb: 0.5 }}>
+                  其他產品
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  這幾個產品串接的是同一個 Authentik——點下去是整頁導頁到該產品自己的網址，
+                  不是嵌入畫面。因為共用同一個登入 session，理論上不用重新輸入密碼。
+                </Typography>
+
+                {portalProducts.length === 0 ? (
+                  <Alert severity="info" variant="outlined">
+                    目前沒有設定任何產品。請在 <code>VITE_PORTAL_PRODUCTS</code> 填入逗號分隔的網址，
+                    例如 <code>{'http://localhost:5175,http://localhost:5176'}</code>，
+                    每個產品的顯示名稱會直接取網址的 host（例如 <code>localhost:5175</code>）。
+                  </Alert>
+                ) : (
+                  <Stack spacing={1}>
+                    {portalProducts.map((product) => (
+                      <Link
+                        key={product.url}
+                        href={product.url}
+                        underline="hover"
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          p: 1.5,
+                          borderRadius: 1.5,
+                          border: '1px solid',
+                          borderColor: 'divider',
+                          color: 'text.primary',
+                        }}
+                      >
+                        {product.name}
+                        <ChevronRightRoundedIcon fontSize="small" color="action" />
+                      </Link>
+                    ))}
+                  </Stack>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {auth.error && <Alert severity="error">{auth.error.message}</Alert>}
 

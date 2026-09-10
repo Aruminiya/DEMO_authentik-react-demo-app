@@ -3,6 +3,10 @@
 # 「多個各自獨立的產品，共用同一個 Authentik」——就是 docs/bon-portal-sso-logout-design.md
 # 裡討論的架構，複製一份 service 改個名字、改個 port，就能再多開一個「假產品」。
 #
+# bon-portal-demo 這個 service 把 VITE_DEMO_APP_TYPE 設成 portal，示範文件附錄裡
+# 確認可行的「導覽入口／Launcher」模式：登入後多一張「其他產品」卡片，點下去整頁
+# 導去 bonsale-demo／bontalk-demo，不是 iframe 嵌入（那個已經被排除，見同一份文件）。
+#
 # 開始之前，每個 service 都要先在 Authentik 後台建好對應的 Application/Provider，
 # 拿到各自的 client_id，並且把下面對應的 REDIRECT_URI 一字不差地登記進
 # Authentik 那個 Provider 的 Redirect URIs 清單（Strict 比對、連結尾斜線都算，
@@ -13,29 +17,66 @@
 #   docker compose build bonsale-demo && docker compose up -d bonsale-demo
 
 services:
-  bonsale-demo:
+  authentik-react-demo-app-portal:
     build:
       context: .
       args:
-        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/<換成-bonsale-的-provider-slug>/
-        VITE_AUTHENTIK_CLIENT_ID: <換成-bonsale-在-Authentik-裡的-client_id>
-        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:5175/login
-        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:5175/login
+        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-portal/
+        VITE_AUTHENTIK_CLIENT_ID: n4ZvohRqIxeoESz5xMTI8ze1E29xR6nIb6KxkNNQ
+        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6174/login
+        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/login
+        VITE_DEMO_APP_NAME: authentik-react-demo-app-portal
+        VITE_THEME_COLOR: default
+        VITE_DEMO_APP_TYPE: portal
+        VITE_PORTAL_PRODUCTS: 'http://localhost:6175,http://localhost:6176,http://localhost:6177'
     ports:
-      - "5175:80"
+      - "6174:80"
     restart: unless-stopped
-
-  bontalk-demo:
+  authentik-react-demo-app-product-01:
     build:
       context: .
       args:
-        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/<換成-bontalk-的-provider-slug>/
-        VITE_AUTHENTIK_CLIENT_ID: <換成-bontalk-在-Authentik-裡的-client_id>
-        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:5176/login
-        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:5176/login
+        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-01/
+        VITE_AUTHENTIK_CLIENT_ID: J8v4Dycz7ncYZozxQ2z5lYLI6q3znJ9Kq48Rl27E
+        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6175/login
+        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
+        VITE_DEMO_APP_NAME: authentik-react-demo-app-product-01
+        VITE_THEME_COLOR: blue
+        VITE_DEMO_APP_TYPE: product
     ports:
-      - "5176:80"
+      - "6175:80"
     restart: unless-stopped
 
-  # 要再多開一個「假產品」，複製上面一整塊、改 service 名稱、改 port
-  # （5177、5178...）、改 client_id，就是新的一個獨立產品。
+  authentik-react-demo-app-product-02:
+    build:
+      context: .
+      args:
+        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-02/
+        VITE_AUTHENTIK_CLIENT_ID: tQOKQvkrVL7yIQUptnklElrcanhzqSnwWVypxviF
+        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6176/login
+        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
+        VITE_DEMO_APP_NAME: authentik-react-demo-app-product-02
+        VITE_THEME_COLOR: green
+        VITE_DEMO_APP_TYPE: product
+    ports:
+      - "6176:80"
+    restart: unless-stopped
+
+  authentik-react-demo-app-product-03:
+    build:
+      context: .
+      args:
+        VITE_AUTHENTIK_AUTHORITY: http://localhost:9000/application/o/authentik-react-demo-app-product-03/
+        VITE_AUTHENTIK_CLIENT_ID: aqB8xcgT5HqI4usQC3sFQS13eXfdqlUD2wRH0roK
+        VITE_AUTHENTIK_REDIRECT_URI: http://localhost:6177/login
+        VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: http://localhost:6174/dashboard
+        VITE_DEMO_APP_NAME: authentik-react-demo-app-product-03
+        VITE_THEME_COLOR: yellow
+        VITE_DEMO_APP_TYPE: product
+    ports:
+      - "6177:80"
+    restart: unless-stopped
+
+  # 要再多開一個「假產品」，複製 bonsale-demo/bontalk-demo 那樣一整塊、改 service
+  # 名稱、改 port（5178、5179...）、改 client_id，就是新的一個獨立產品。要讓
+  # bon-portal-demo 也能導去它，記得把它加進上面 VITE_PORTAL_PRODUCTS 那個 JSON 陣列。

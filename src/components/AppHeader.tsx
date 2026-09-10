@@ -11,10 +11,12 @@ import {
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 
 import { postLogoutRedirectUri } from '../config/oidc'
+import { signoutWithCancelBounce } from '../utils/authentikLogout'
 
 export function AppHeader() {
   const auth = useAuth()
 
+  const appName = import.meta.env.VITE_DEMO_APP_NAME || 'React + Authentik OIDC Demo'
   const initials = (auth.user?.profile?.email || auth.user?.profile?.preferred_username || '?')
     .charAt(0)
     .toUpperCase()
@@ -23,7 +25,7 @@ export function AppHeader() {
     <AppBar position="static" color="inherit" elevation={0} sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
       <Toolbar sx={{ gap: 2 }}>
         <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 700 }}>
-          React + Authentik Demo
+          {appName}
         </Typography>
 
         {auth.isAuthenticated && (
@@ -40,11 +42,13 @@ export function AppHeader() {
                 variant="outlined"
                 color="inherit"
                 startIcon={<LogoutRoundedIcon />}
-                onClick={() =>
-                  auth.signoutRedirect({
-                    post_logout_redirect_uri: postLogoutRedirectUri,
-                  })
-                }
+                onClick={async () => {
+                  // 這裡故意不用 auth.signoutRedirect()——原因見
+                  // signoutWithCancelBounce()（繞過 Authentik 登出白畫面的 bug）。
+                  const idTokenHint = auth.user?.id_token
+                  await auth.removeUser()
+                  await signoutWithCancelBounce(idTokenHint, postLogoutRedirectUri)
+                }}
               >
                 登出此應用
               </Button>

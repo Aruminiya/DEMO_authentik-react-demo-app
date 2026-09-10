@@ -33,7 +33,7 @@ export default function LoginPage() {
   const enrollmentHref = enrollmentUrl
     ? `${enrollmentUrl}${enrollmentUrl.includes('?') ? '&' : '?'}next=${encodeURIComponent(`${window.location.origin}/login`)}`
     : undefined
-
+  const title = import.meta.env.VITE_DEMO_APP_NAME || 'React + Authentik OIDC Demo'
   return (
     <Box
       sx={{
@@ -52,7 +52,7 @@ export default function LoginPage() {
               <Stack spacing={1.5} sx={{ alignItems: 'center', textAlign: 'center' }}>
                 <ShieldRoundedIcon color="primary" sx={{ fontSize: 48 }} />
                 <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
-                  React + Authentik OIDC Demo
+                  {title}
                 </Typography>
                 <Typography color="text.secondary" variant="body2">
                   使用你的 Authentik 帳號登入，體驗完整的 OIDC 登入流程。
