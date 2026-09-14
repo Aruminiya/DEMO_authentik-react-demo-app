@@ -23,7 +23,7 @@ esc() {
   echo "  VITE_AUTHENTIK_CLIENT_ID: \"$(esc "${VITE_AUTHENTIK_CLIENT_ID:-}")\","
   echo "  VITE_AUTHENTIK_REDIRECT_URI: \"$(esc "${VITE_AUTHENTIK_REDIRECT_URI:-}")\","
   echo "  VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI: \"$(esc "${VITE_AUTHENTIK_POST_LOGOUT_REDIRECT_URI:-}")\","
-  echo "  VITE_AUTHENTIK_SCOPE: \"$(esc "${VITE_AUTHENTIK_SCOPE:-openid profile email}")\","
+  echo "  VITE_AUTHENTIK_SCOPE: \"$(esc "${VITE_AUTHENTIK_SCOPE:-openid profile email offline_access}")\","
   echo "  VITE_AUTHENTIK_ENROLLMENT_URL: \"$(esc "${VITE_AUTHENTIK_ENROLLMENT_URL:-}")\","
   echo "  VITE_DEMO_APP_NAME: \"$(esc "${VITE_DEMO_APP_NAME:-}")\","
   echo "  VITE_DEMO_APP_TYPE: \"$(esc "${VITE_DEMO_APP_TYPE:-product}")\","

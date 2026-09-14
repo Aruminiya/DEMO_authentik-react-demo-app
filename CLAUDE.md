@@ -73,6 +73,29 @@ The "Parents" and "角色 (Roles)" fields on the group-creation form are unrelat
 
 **TypeScript config** is split per the standard Vite template: `tsconfig.json` is a references-only root, `tsconfig.app.json` covers `src/` (strict, bundler resolution), `tsconfig.node.json` covers `vite.config.ts`.
 
+## Token renewal (`automaticSilentRenew` + `offline_access`)
+
+`src/config/oidc.ts` sets `automaticSilentRenew: true`, so `oidc-client-ts` renews the access token in the background shortly before it expires (Authentik's default `access_token_validity` is `minutes=5`). **How** it renews depends entirely on whether a refresh token exists, and the two paths have very different deployment constraints:
+
+- **With a refresh token** — `signinSilent()` uses the `refresh_token` grant: a direct `POST` to `/token` from the app's own JS. First-party request, no cookies involved. Works everywhere.
+- **Without one** — it falls back to a hidden `<iframe>` loading `/authorize?...&prompt=none`, which only works if the browser sends Authentik's `authentik_session` cookie *into that iframe*. That cookie is `SameSite=None; Secure` (set dynamically in Authentik's `root/middleware.py:108-110` — `"None" if secure else "Lax"`, so HTTPS deployments get `None`), but it is still a **third-party cookie** whenever the app and Authentik are on different sites, and browsers block those. Authentik then sees an unauthenticated request with `prompt=none` and returns `login_required` (`providers/oauth2/views/authorize.py:455`), surfaced in the UI as *"The Authorization Server requires End-User authentication"*.
+
+This is why the whole thing worked for months locally and broke immediately on Cloud Run: `localhost:6174` and `localhost:9000` are the **same site** (SameSite compares eTLD+1; ports don't count), so the iframe was first-party. `*.run.app` → `bonvies.com` is genuinely cross-site.
+
+So `offline_access` in `VITE_AUTHENTIK_SCOPE` is **load-bearing, not decoration** — it is what makes Authentik issue a refresh token at all (`providers/oauth2/views/token.py:151` only creates one when `offline_access` is in the authorization code's scope). It is in the default in three places that must stay in sync: `oidc.ts`'s fallback, `docker-entrypoint.d/40-generate-env-config.sh`'s `:-` default, and `.env.example`.
+
+**The non-obvious trap:** requesting a scope the provider hasn't been configured for does **not** error — `authorize.py:295-301` silently intersects the request down to the provider's configured Scope Mappings:
+
+```python
+if not scopes_to_check.issubset(default_scope_names):
+    LOGGER.info("Application requested scopes not configured, setting to overlap", ...)
+    self.scope = self.scope.intersection(default_scope_names)
+```
+
+So adding `offline_access` to `VITE_AUTHENTIK_SCOPE` does nothing on its own. On the Authentik side each provider must also have the built-in `authentik default OAuth Mapping: OpenID 'offline_access'` added under **Scopes** (and the **Refresh token** grant type enabled). Symptom of forgetting: no error anywhere, no refresh token, and the iframe fallback silently returns — i.e. exactly the same broken behaviour as before the change.
+
+Related: `ProtectedRoute.tsx` guards its error branch with `auth.error && !auth.isAuthenticated`. `auth.error` is also set by a *background* renewal failure; without the `!auth.isAuthenticated` half, one failed background renew throws a still-logged-in user onto a fullscreen error page.
+
 ## Session, logout & trust boundaries
 
 Almost every confusing login/logout symptom in this app traces back to one of three separate trust boundaries. Misdiagnosing which one is at fault wastes time fixing the wrong layer:
