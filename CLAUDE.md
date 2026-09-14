@@ -32,7 +32,7 @@ Instead, `docker-entrypoint.d/40-generate-env-config.sh` — picked up automatic
 
 Practical upshot: `docker-compose.yml`'s four services now all share **one** built image (`authentik-react-demo-app:local`) and differ only by `environment:`, not `build.args` — changing a value there and running `docker compose up -d <service>` takes effect immediately, no rebuild. The one exception is `VITE_DEMO_APP_NAME`'s effect on the static `<title>` tag baked by `vite.config.ts`'s `htmlTitlePlugin` at build time (see below) — that stays whatever a generic/no-arg build produced; `src/main.tsx` corrects it at runtime via `document.title = getEnv('VITE_DEMO_APP_NAME')` once `window.__ENV__` is available, so the tab title still ends up right, just one JS tick later than the static HTML.
 
-The step-by-step Cloud Run runbook — exact `gcloud`/`buildx` commands, the Authentik-side checklist, verification scripts, and a troubleshooting table of every failure this project actually hit — lives in `docs/cloud-run-deployment.md`.
+The step-by-step Cloud Run runbook — exact `gcloud`/`buildx` commands, the Authentik-side checklist, verification scripts, and a troubleshooting table of every failure this project actually hit — lives in `docs/cloud-run-deployment.md`. `docs/oauth-oidc-in-this-app.md` explains the protocol itself (the two-request code flow, PKCE, JWT vs opaque tokens, public vs confidential clients, and what each mechanism does and does not protect against) using this app's own endpoints and DevTools output — start there when onboarding someone who hasn't worked with OIDC before.
 
 ## Architecture
 
