@@ -15,7 +15,7 @@ import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded'
 
 import { postLogoutRedirectUri } from '../config/oidc'
 import { getEnv } from '../config/runtimeEnv'
-import { signoutWithCancelBounce } from '../utils/authentikLogout'
+import { markSigningOut, signoutWithCancelBounce } from '../utils/authentikLogout'
 
 export function AppHeader() {
   const auth = useAuth()
@@ -71,6 +71,8 @@ export function AppHeader() {
                   // 這裡故意不用 auth.signoutRedirect()——原因見
                   // signoutWithCancelBounce()（繞過 Authentik 登出白畫面的 bug）。
                   const idTokenHint = auth.user?.id_token
+                  // 一定要在 removeUser() 之前舉旗，原因見 markSigningOut()。
+                  markSigningOut()
                   await auth.removeUser()
                   await signoutWithCancelBounce(idTokenHint, postLogoutRedirectUri)
                 }}

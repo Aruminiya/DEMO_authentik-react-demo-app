@@ -1,5 +1,21 @@
 import { getEnv } from '../config/runtimeEnv'
 
+// 登出進行中的旗標。登出按鈕會先 auth.removeUser() 再導去 Authentik，但 removeUser()
+// 一完成，ProtectedRoute 就看到「未登入」而馬上 signinRedirect()——兩個導頁在
+// signoutWithCancelBounce() 的 await fetch() 縫隙裡競速，signinRedirect() 先搶到的話
+// 瀏覽器根本不會走到 end-session，Authentik session 還在，立刻被 SSO 登回 Dashboard。
+// ProtectedRoute 看到這個旗標就不自動登入。刻意用模組變數而不是 React state：
+// 頁面接著就會整頁導走，不需要觸發重新渲染，只要 effect 執行時讀得到就好。
+let signingOut = false
+
+export function markSigningOut(): void {
+  signingOut = true
+}
+
+export function isSigningOut(): boolean {
+  return signingOut
+}
+
 // 繞過 Authentik 一個真實存在的 bug（在 2026.8.0 版確認過，完整追查過程見
 // docs/bon-portal-sso-logout-design.md）：只要瀏覽器在 Authentik 網域的 session
 // 裡還殘留著一個舊的 flow plan，EndSessionView.dispatch() 就會直接回傳一個空白

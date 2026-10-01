@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react'
-import { useAuth, useAutoSignin } from 'react-oidc-context'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { hasAuthParams, useAuth } from 'react-oidc-context'
 
+import { isSigningOut } from '../utils/authentikLogout'
 import { FullscreenError, FullscreenLoader } from './FullscreenState'
 
 type ProtectedRouteProps = {
@@ -14,7 +15,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   console.log('[ProtectedRoute] : ',auth)
 
   // 未登入時直接呼叫 signinRedirect()，不再導去 /login 頁面讓使用者手動按登入。
-  useAutoSignin()
+  // 等同 react-oidc-context 的 useAutoSignin()（同樣的條件、同樣只試一次），
+  // 只多了 !isSigningOut()：useAutoSignin() 沒有暫停的選項，登出按鈕 removeUser()
+  // 之後它會跟登出導頁搶先，把使用者 SSO 登回來。細節見 markSigningOut()。
+  const hasTriedSignin = useRef(false)
+  useEffect(() => {
+    if (hasTriedSignin.current || isSigningOut()) return
+    if (hasAuthParams() || auth.isAuthenticated || auth.activeNavigator || auth.isLoading) return
+    hasTriedSignin.current = true
+    void auth.signinRedirect()
+  }, [auth])
 
   if (auth.isLoading) {
     return <FullscreenLoader label="正在確認登入狀態…" />
