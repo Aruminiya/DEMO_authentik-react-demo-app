@@ -58,7 +58,7 @@ export function AppHeader() {
             <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontSize: 14 }}>
               {initials}
             </Avatar>
-            <Typography variant="body2" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
+            <Typography variant="body2" color="textSecondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
               {auth.user?.profile?.email}
             </Typography>
             <Tooltip title="只登出這個應用程式；Authentik 帳號本身仍保持登入，其他串接同一個 Authentik 的應用不受影響">

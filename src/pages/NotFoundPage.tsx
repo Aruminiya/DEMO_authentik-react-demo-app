@@ -7,7 +7,7 @@ export default function NotFoundPage() {
       <Container maxWidth="xs">
         <Stack spacing={2} sx={{ alignItems: 'center', textAlign: 'center' }}>
           <Typography variant="h3" sx={{ fontWeight: 700 }}>404</Typography>
-          <Typography color="text.secondary">找不到這個頁面。</Typography>
+          <Typography color="textSecondary">找不到這個頁面。</Typography>
           <Button component={RouterLink} to="/" variant="contained">
             回首頁
           </Button>

@@ -38,7 +38,7 @@ function TokenTab({ token, label }: { token?: string | null; label: string }) {
   const claims = decodeJwt(token)
 
   if (!token) {
-    return <Typography color="text.secondary">沒有取得 {label}。</Typography>
+    return <Typography color="textSecondary">沒有取得 {label}。</Typography>
   }
 
   return (
@@ -56,7 +56,7 @@ function TokenTab({ token, label }: { token?: string | null; label: string }) {
       {claims ? (
         <CodeBlock value={JSON.stringify(claims, null, 2)} />
       ) : (
-        <Typography color="text.secondary" variant="body2">
+        <Typography color="textSecondary" variant="body2">
           此 Token 不是可解析的 JWT（可能是 opaque token）。
         </Typography>
       )}

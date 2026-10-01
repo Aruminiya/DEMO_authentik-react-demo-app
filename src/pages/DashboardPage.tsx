@@ -73,7 +73,7 @@ export default function DashboardPage() {
           <Typography variant="h5" sx={{ fontWeight: 600 }}>
             {profile?.name || profile?.preferred_username || '已登入使用者'}
           </Typography>
-          <Typography color="text.secondary">{profile?.email}</Typography>
+          <Typography color="textSecondary">{profile?.email}</Typography>
         </Stack>
 
         <Stack spacing={1} sx={{ alignItems: { xs: 'flex-start', sm: 'flex-end' } }}>
@@ -91,7 +91,7 @@ export default function DashboardPage() {
       <Divider sx={{ my: 3 }} />
 
       <Stack spacing={1.5}>
-        <Typography variant="subtitle2" color="text.secondary">
+        <Typography variant="subtitle2" color="textSecondary">
           已授權的 Scope
         </Typography>
         <ScopeChips scope={auth.user?.scope} />
@@ -101,7 +101,7 @@ export default function DashboardPage() {
 
   const groupsSection = (
     <>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
         這是 Authentik 除了「證明你是誰」之外，另外決定「你能用什麼」的資料——由 Token 裡的 <code>groups</code> claim 帶過來。
       </Typography>
 
@@ -112,7 +112,7 @@ export default function DashboardPage() {
           並把該 scope 加進 <code>VITE_AUTHENTIK_SCOPE</code>。
         </Alert>
       ) : groups.length === 0 ? (
-        <Typography color="text.secondary" variant="body2">
+        <Typography color="textSecondary" variant="body2">
           這個帳號目前沒有加入任何群組。
         </Typography>
       ) : (
@@ -164,7 +164,7 @@ export default function DashboardPage() {
                     其他產品
                   </Typography>
                 </Stack>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
                   這幾個產品串接的是同一個 Authentik——點下去是整頁導頁到該產品自己的網址，
                   不是嵌入畫面。因為共用同一個登入 session，理論上不用重新輸入密碼。
                 </Typography>

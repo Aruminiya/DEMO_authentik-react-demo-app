@@ -18,7 +18,7 @@ export function FullscreenLoader({ label }: FullscreenLoaderProps) {
     >
       <Stack spacing={2} sx={{ alignItems: 'center' }}>
         <CircularProgress />
-        {label && <Typography color="text.secondary">{label}</Typography>}
+        {label && <Typography color="textSecondary">{label}</Typography>}
       </Stack>
     </Box>
   )
@@ -44,7 +44,7 @@ export function FullscreenError({ message, onRetry }: FullscreenErrorProps) {
         <Alert severity="error" sx={{ width: '100%' }}>
           {message}
         </Alert>
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="textSecondary">
           自動導向 Authentik 登入時發生錯誤，可以重試，或回登入頁手動操作。
         </Typography>
         <Stack direction="row" spacing={1.5}>

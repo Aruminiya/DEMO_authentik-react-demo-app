@@ -62,7 +62,7 @@ export default function LoginPage() {
                 <Typography component="h1" variant="h5" sx={{ fontWeight: 600 }}>
                   {title}
                 </Typography>
-                <Typography color="text.secondary" variant="body2">
+                <Typography color="textSecondary" variant="body2">
                   {isPortal
                     ? '統一入口——登入一次，即可使用所有串接同一個 Authentik 的產品。'
                     : '使用你的 Authentik 帳號登入，體驗完整的 OIDC 登入流程。'}
@@ -85,7 +85,7 @@ export default function LoginPage() {
                 {auth.isLoading ? '導向登入中…' : '使用 Authentik 登入'}
               </Button>
 
-              <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+              <Typography variant="caption" color="textSecondary" sx={{ textAlign: 'center' }}>
                 登入後會導向 Authentik 的授權頁面，完成後自動導回本站。
               </Typography>
 
@@ -97,7 +97,7 @@ export default function LoginPage() {
                       前往註冊
                     </Link>
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
+                  <Typography variant="caption" color="textSecondary" sx={{ textAlign: 'center' }}>
                     註冊完成後，請返回這個頁面並點擊上方按鈕登入。
                   </Typography>
                 </Stack>

@@ -26,6 +26,11 @@ export const theme = createTheme({
     background: {
       default: '#f5f6f8',
     },
+    text: {
+      primary: '#1e1e1e',
+      secondary: '#6e6e6e',
+      disabled: '#9e9e9e',
+    },
   },
   shape: {
     borderRadius: 10,
