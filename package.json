@@ -1,14 +1,15 @@
 {
   "name": "authentik-react-demo-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "deploy": "docker compose up -d --build"
+    "deploy": "docker compose up -d --build",
+    "push": "sh scripts/push.sh"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

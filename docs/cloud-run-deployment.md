@@ -99,26 +99,28 @@ gcloud run services update authentik-react-demo-app-portal \
 ## 5. 之後：改了程式碼
 
 ```bash
-# 1. 重新 build + push
-docker buildx build --platform linux/amd64,linux/arm64 \
-  -t aruminiya/authentik-react-demo-app:latest --push .
+# 1. 把版本號往上加（只改 package.json / package-lock.json，不會自己 commit 或打 git tag）
+npm version patch --no-git-tag-version     # 1.0.0 → 1.0.1；功能改動用 minor，破壞性改動用 major
 
-# 2. 取得新的 digest
-docker buildx imagetools inspect aruminiya/authentik-react-demo-app:latest
+# 2. build + push，同時打上 :<版本號> 與 :latest，最後印出網址與 digest
+npm run push
+#    版本號已經推過的話會直接拒絕——版本號 tag 只推一次、永不覆蓋，才不會落入下面 :latest 的快取陷阱
 
-# 3. 四個服務都用 digest 重新部署
-DIGEST=sha256:<新的>
+# 3. 四個服務都用版本號重新部署
+VERSION=1.0.1
 for s in portal product-01 product-02 product-03; do
   gcloud run deploy authentik-react-demo-app-$s \
     --project=data-bonvies --region=asia-east1 \
-    --image="aruminiya/authentik-react-demo-app@$DIGEST" \
+    --image="docker.io/aruminiya/authentik-react-demo-app:$VERSION" \
     --quiet
 done
 ```
 
+用 GUI 部署也一樣：服務 → **編輯並部署新的修訂版本** → 容器映像檔網址填 `docker.io/aruminiya/authentik-react-demo-app:1.0.1`（不要填 `:latest`），四個服務各做一次。
+
 `gcloud run deploy` 只指定 `--image` 時，其餘設定（環境變數、port、IAM）都會保留，不會被洗掉。
 
-### ⚠️ 一定要用 digest，不能用 `:latest`
+### ⚠️ 一定要用版本號或 digest，不能用 `:latest`
 
 Cloud Run 會把 Docker Hub 的 image 改寫成 `mirror.gcr.io/...` 這個 pull-through 快取。**對 `:latest` 這種會變動的 tag，它會回一份過期的 digest —— 而且部署會回報成功。**
 
@@ -133,7 +135,7 @@ gcloud run revisions describe <revision-name> \
 # 拿這個跟你剛推上去的 digest 比對
 ```
 
-想從根本避開，就每次 build 給一個唯一的 tag（`:v3`、`:20260914`），不要一直覆蓋 `:latest`。
+這就是第 3 步改用版本號的原因：一個從沒推過的 tag，mirror 沒有舊的對應可以快取，效果跟 digest 一樣，但好記、GUI 也好填。`scripts/push.sh` 會拒絕重推已存在的版本號，守住「每個版本號只對應一份內容」這個前提。digest 仍然是最終依據——懷疑部署的不是新版時，照上面的方法比對 digest。
 
 ## 6. Authentik 端的必做設定
 
